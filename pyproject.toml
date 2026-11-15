@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "trundle-embed"
+version = "0.1.0"
+description = "OpenAI-compatible embedding server that trundles along on CPUs with no AVX"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    # numpy >= 2.4 is built for x86-64-v2 (SSE4.2) and dies with SIGILL on the
+    # K10-era CPUs this project targets; 2.2.6 and 2.3.5 are verified good.
+    "numpy>=2.2.6,<2.4",
+    "onnxruntime>=1.18",
+    "tokenizers>=0.20",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+# Static (model2vec) models: 2 ms/chunk instead of 500 ms, no transformer at all.
+static = ["model2vec>=0.4"]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+trundle = "trundle.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trundle"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

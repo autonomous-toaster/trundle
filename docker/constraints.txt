@@ -1,0 +1,7 @@
+# What the image actually ships. The ranges in pyproject.toml keep the project
+# installable anywhere; these pins are what has been verified on the reference
+# box (AMD Turion II Neo N54L, no SSE4.2):
+#   numpy >= 2.4 is compiled for x86-64-v2 and dies with SIGILL on K10 CPUs.
+#   onnxruntime 1.32.0 is the version the benchmarks were run with.
+numpy==2.2.6
+onnxruntime==1.32.0
