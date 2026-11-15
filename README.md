@@ -37,6 +37,11 @@ one worker, one intra-op thread:
 | all-MiniLM-L6-v2 | 384 | 23 | 272 | 45 min | 0.780 | – |
 | potion-retrieval-32M (static) | 512 | 129 | 2 | 16 s | 0.754 | 0.613 |
 
+Those figures come from the benchmark, which ran while the box was otherwise
+mostly quiet. Re-measured with a load average of 4 on the same 2 cores the same
+models are 1.4× slower — and so is the original benchmark script, so the drift is
+the machine, not the service. Treat the table as relative, not absolute.
+
 That is why `workers=1`, `threads=1` and `max_batch=1` are the defaults: on this
 class of CPU one thread beats two by 1.8×, and batching *hurts* — for the same
 32-chunk request the image took 29 s at batch 1, 33 s at 4, 34 s at 8 and 41 s at
