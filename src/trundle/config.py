@@ -33,7 +33,9 @@ def _env_int(name: str, default: int) -> int:
     try:
         return int(raw)
     except ValueError:
-        raise ConfigError(f"{ENV_PREFIX}{name} must be an integer, got {raw!r}") from None
+        raise ConfigError(
+            f"{ENV_PREFIX}{name} must be an integer, got {raw!r}"
+        ) from None
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -69,7 +71,7 @@ class Settings:
     log_level: str = "info"
     offline: bool = False
 
-    def validated(self) -> "Settings":
+    def validated(self) -> Settings:
         if not 1 <= self.port <= 65535:
             raise ConfigError(f"port out of range: {self.port}")
         if self.workers < 1:
@@ -83,13 +85,17 @@ class Settings:
         if self.max_length < 0:
             raise ConfigError(f"max_length must be >= 0, got {self.max_length}")
         if self.prefix_mode not in PREFIX_MODES:
-            raise ConfigError(f"prefix_mode must be one of {PREFIX_MODES}, got {self.prefix_mode!r}")
+            raise ConfigError(
+                f"prefix_mode must be one of {PREFIX_MODES}, got {self.prefix_mode!r}"
+            )
         if self.log_level not in LOG_LEVELS:
-            raise ConfigError(f"log_level must be one of {LOG_LEVELS}, got {self.log_level!r}")
+            raise ConfigError(
+                f"log_level must be one of {LOG_LEVELS}, got {self.log_level!r}"
+            )
         return self
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         settings = cls(
             model=_env_str("MODEL", cls.model),
             model_dir=Path(_env_str("MODEL_DIR", str(cls.model_dir))),
@@ -107,7 +113,7 @@ class Settings:
         )
         return settings.validated()
 
-    def with_overrides(self, **overrides: Any) -> "Settings":
+    def with_overrides(self, **overrides: Any) -> Settings:
         """Apply CLI overrides, ignoring the ones the user did not pass."""
         clean = {key: value for key, value in overrides.items() if value is not None}
         if "model_dir" in clean:
@@ -117,4 +123,9 @@ class Settings:
 
 def _hub_offline() -> bool:
     """Respect the Hugging Face convention so the same env works for both tools."""
-    return os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get("HF_HUB_OFFLINE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )

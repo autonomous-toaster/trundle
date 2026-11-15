@@ -28,7 +28,9 @@ def served(tmp_path: Path):
     content = tmp_path / "served"
     content.mkdir()
     (content / "model.onnx").write_bytes(b"x" * 4096)
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(content))
+    handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler, directory=str(content)
+    )
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -80,7 +82,9 @@ def test_download_reports_http_errors(served) -> None:
         download_file(f"{base}/nope.onnx", Path(content).parent / "out" / "nope.onnx")
 
 
-def test_pull_fills_every_declared_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pull_fills_every_declared_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     spec = resolve("all-MiniLM-L6-v2")
     served_root = tmp_path / "hf"
     for name in spec.files:
@@ -88,14 +92,20 @@ def test_pull_fills_every_declared_file(tmp_path: Path, monkeypatch: pytest.Monk
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"onnx" * 128)
 
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(served_root))
+    handler = functools.partial(
+        http.server.SimpleHTTPRequestHandler, directory=str(served_root)
+    )
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    monkeypatch.setenv("TRUNDLE_HF_ENDPOINT", f"http://127.0.0.1:{server.server_address[1]}")
+    monkeypatch.setenv(
+        "TRUNDLE_HF_ENDPOINT", f"http://127.0.0.1:{server.server_address[1]}"
+    )
     try:
         root = pull(spec, tmp_path / "models")
         assert is_present(root, spec)
-        assert disk_usage(tmp_path / "models") == sum(len(b"onnx" * 128) for _ in spec.files)
+        assert disk_usage(tmp_path / "models") == sum(
+            len(b"onnx" * 128) for _ in spec.files
+        )
     finally:
         server.shutdown()
         server.server_close()

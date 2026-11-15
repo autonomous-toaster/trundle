@@ -42,12 +42,6 @@ class ModelSpec:
     ms_per_chunk: float | None = None
     notes: str = ""
 
-    @property
-    def prefix(self) -> str:
-        """Prefix that is shared by both sides (arctic/bge style instructions)."""
-        common = self.query_prefix if self.query_prefix == self.document_prefix else ""
-        return common
-
     def prefix_for(self, mode: str) -> str:
         if mode == "query":
             return self.query_prefix

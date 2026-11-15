@@ -41,7 +41,3 @@ def test_unknown_model_lists_alternatives() -> None:
 )
 def test_prefixes_follow_the_mode(name: str, mode: str, expected: str) -> None:
     assert resolve(name).prefix_for(mode).startswith(expected)
-
-
-def test_symmetric_models_have_no_distinct_prefix() -> None:
-    assert resolve("bge-small-en-v1.5").prefix == ""

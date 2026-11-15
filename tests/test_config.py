@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from trundle.config import ConfigError, Settings
@@ -9,8 +11,8 @@ from trundle.config import ConfigError, Settings
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in list(__import__("os").environ):
-        if name.startswith("TRUNDLE_") or name.startswith("HF_HUB"):
+    for name in list(os.environ):
+        if name.startswith(("TRUNDLE_", "HF_HUB")):
             monkeypatch.delenv(name, raising=False)
 
 
@@ -63,7 +65,9 @@ def test_empty_env_value_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
         ("TRUNDLE_WORKERS", "0"),
     ],
 )
-def test_bad_values_raise(monkeypatch: pytest.MonkeyPatch, key: str, value: str) -> None:
+def test_bad_values_raise(
+    monkeypatch: pytest.MonkeyPatch, key: str, value: str
+) -> None:
     monkeypatch.setenv(key, value)
     with pytest.raises(ConfigError):
         Settings.from_env()

@@ -12,11 +12,10 @@ an interrupted pull never leaves a model that looks present but is truncated.
 from __future__ import annotations
 
 import os
-import shutil
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from .models import ModelSpec
 
@@ -35,7 +34,11 @@ def model_root(model_dir: Path, spec: ModelSpec) -> Path:
 
 
 def missing_files(root: Path, spec: ModelSpec) -> list[str]:
-    return [name for name in spec.files if not (root / name).is_file() or (root / name).stat().st_size == 0]
+    return [
+        name
+        for name in spec.files
+        if not (root / name).is_file() or (root / name).stat().st_size == 0
+    ]
 
 
 def is_present(root: Path, spec: ModelSpec) -> bool:
@@ -52,7 +55,9 @@ def file_url(spec: ModelSpec, name: str) -> str:
 
 
 def _token() -> str | None:
-    return os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or None
+    return (
+        os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or None
+    )
 
 
 def _writable(directory: Path) -> bool:
@@ -96,7 +101,9 @@ def download_file(
             ) from None
         raise StoreError(f"{url} -> HTTP {error.code} {error.reason}") from None
     except urllib.error.URLError as error:
-        raise StoreError(f"{url} -> {error.reason}. Offline? Set TRUNDLE_OFFLINE=1 to skip downloads.") from None
+        raise StoreError(
+            f"{url} -> {error.reason}. Offline? Set TRUNDLE_OFFLINE=1 to skip downloads."
+        ) from None
 
     resumed = response.status == 206
     received = have if resumed else 0
@@ -116,7 +123,9 @@ def download_file(
     response.close()
 
     if total and received != total:
-        raise StoreError(f"{dest.name}: got {received} of {total} bytes; retry the download")
+        raise StoreError(
+            f"{dest.name}: got {received} of {total} bytes; retry the download"
+        )
     os.replace(partial, dest)
 
 
@@ -174,7 +183,3 @@ def disk_usage(model_dir: Path) -> int:
         if entry.is_file():
             total += entry.stat().st_size
     return total
-
-
-def remove(spec: ModelSpec, model_dir: Path) -> None:
-    shutil.rmtree(model_root(model_dir, spec), ignore_errors=True)

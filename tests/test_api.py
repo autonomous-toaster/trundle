@@ -34,7 +34,12 @@ class FakeEmbedder:
         return EmbResult([[1.0, 0.0, 0.0, 0.0] for _ in texts], tokens=3 * len(texts))
 
     def info(self) -> dict[str, object]:
-        return {"model": self.spec.name, "dim": self.dim, "kind": "onnx", "path": "/models/x"}
+        return {
+            "model": self.spec.name,
+            "dim": self.dim,
+            "kind": "onnx",
+            "path": "/models/x",
+        }
 
 
 @pytest.fixture
@@ -71,7 +76,9 @@ def test_document_prefix_is_the_default_mode(client: TestClient) -> None:
 
 
 def test_base64_encoding(client: TestClient) -> None:
-    response = client.post("/v1/embeddings", json={"input": "hello", "encoding_format": "base64"})
+    response = client.post(
+        "/v1/embeddings", json={"input": "hello", "encoding_format": "base64"}
+    )
     payload = response.json()["data"][0]["embedding"]
     decoded = struct.unpack("<4f", base64.b64decode(payload))
     assert decoded == (1.0, 0.0, 0.0, 0.0)
@@ -112,8 +119,14 @@ def test_auth_guard() -> None:
     with TestClient(create_app(FakeEmbedder(), settings)) as client:
         assert client.post("/v1/embeddings", json={"input": "x"}).status_code == 401
         bad = {"Authorization": "Bearer nope"}
-        assert client.post("/v1/embeddings", json={"input": "x"}, headers=bad).status_code == 401
+        assert (
+            client.post("/v1/embeddings", json={"input": "x"}, headers=bad).status_code
+            == 401
+        )
         good = {"Authorization": "Bearer s3cret"}
-        assert client.post("/v1/embeddings", json={"input": "x"}, headers=good).status_code == 200
+        assert (
+            client.post("/v1/embeddings", json={"input": "x"}, headers=good).status_code
+            == 200
+        )
         # Health endpoints stay open so containers can be probed without the key.
         assert client.get("/healthz").status_code == 200

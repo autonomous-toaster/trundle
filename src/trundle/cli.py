@@ -45,7 +45,9 @@ def _progress(name: str, received: int, total: int) -> None:
         return
     _PROGRESS[name] = percent
     if total:
-        sys.stderr.write(f"\r  {name}: {received / 1e6:7.1f} / {total / 1e6:.1f} MB ({percent:3d}%)")
+        sys.stderr.write(
+            f"\r  {name}: {received / 1e6:7.1f} / {total / 1e6:.1f} MB ({percent:3d}%)"
+        )
     else:
         sys.stderr.write(f"\r  {name}: {received / 1e6:7.1f} MB")
     if done:
@@ -77,7 +79,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     LOG.info("loaded %s from %s (%d dim)", spec.name, root, embedder.dim)
     if settings.prefix_mode == "document" and spec.document_prefix:
-        LOG.info("prefixing every input with %r; set TRUNDLE_PREFIX_MODE to change", spec.document_prefix)
+        LOG.info(
+            "prefixing every input with %r; set TRUNDLE_PREFIX_MODE to change",
+            spec.document_prefix,
+        )
     if settings.api_key:
         LOG.info("bearer authentication is on")
 
@@ -124,10 +129,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     print("-" * len(header))
     for name, spec in sorted(REGISTRY.items()):
         present = is_present(model_root(settings.model_dir, spec), spec)
-        state = "present" if present else ("partial" if (model_root(settings.model_dir, spec)).exists() else "absent")
+        state = (
+            "present"
+            if present
+            else (
+                "partial"
+                if (model_root(settings.model_dir, spec)).exists()
+                else "absent"
+            )
+        )
         speed = f"{spec.ms_per_chunk:9.0f}" if spec.ms_per_chunk else f"{'-':>9}"
         print(f"{name:28} {spec.dim:4} {spec.mib:5.0f} {speed}  {state}")
-    print("\nms/chunk measured with 128-token chunks, 1 worker, 1 thread, on a 2-core CPU without AVX.")
+    print(
+        "\nms/chunk measured with 128-token chunks, 1 worker, 1 thread, on a 2-core CPU without AVX."
+    )
     return 0
 
 
@@ -141,22 +156,35 @@ def cmd_info(args: argparse.Namespace) -> int:
     print(f"numpy          {numpy.__version__}")
     print(f"model dir      {settings.model_dir}")
     print(f"model          {spec.name} ({spec.repo}, {spec.kind}, {spec.dim} dim)")
-    print(f"files          {'present' if is_present(model_root(settings.model_dir, spec), spec) else 'missing'}")
-    print(f"workers/thread {settings.workers} / {settings.threads}, batch <= {settings.max_batch}")
-    print(f"prefix mode    {settings.prefix_mode} ({spec.prefix_for(settings.prefix_mode)!r})")
+    print(
+        f"files          {'present' if is_present(model_root(settings.model_dir, spec), spec) else 'missing'}"
+    )
+    print(
+        f"workers/thread {settings.workers} / {settings.threads}, batch <= {settings.max_batch}"
+    )
+    print(
+        f"prefix mode    {settings.prefix_mode} ({spec.prefix_for(settings.prefix_mode)!r})"
+    )
     print(f"offline        {settings.offline}")
     print(f"auth           {'bearer required' if settings.api_key else 'open'}")
-    print(_cuda_flags())
+    print(_cpu_report())
     return 0
 
 
-def _cuda_flags() -> str:
+def _cpu_report() -> str:
     """Report the CPU features that decide whether numpy even imports here."""
     try:
         flags = Path("/proc/cpuinfo").read_text()
     except OSError:
         return "cpu flags      unknown (no /proc/cpuinfo)"
-    model = next((line.split(":", 1)[1].strip() for line in flags.splitlines() if line.startswith("model name")), "?")
+    model = next(
+        (
+            line.split(":", 1)[1].strip()
+            for line in flags.splitlines()
+            if line.startswith("model name")
+        ),
+        "?",
+    )
     wanted = ("sse4_1", "sse4_2", "avx", "avx2", "avx512f")
     present = [flag for flag in wanted if f" {flag} " in f" {_flags_line(flags)} "]
     return f"cpu            {model}\n               has: {', '.join(present) or 'none of ' + ', '.join(wanted)}"
@@ -172,40 +200,75 @@ def _flags_line(cpuinfo: str) -> str:
 def _ensure_model(spec: ModelSpec, settings: Settings, *, allow_download: bool) -> Path:
     from .store import ensure
 
-    return ensure(spec, settings.model_dir, allow_download=allow_download and not settings.offline, progress=_progress)
+    return ensure(
+        spec,
+        settings.model_dir,
+        allow_download=allow_download and not settings.offline,
+        progress=_progress,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="trundle", description="OpenAI-compatible embedding server for small CPUs.")
+    parser = argparse.ArgumentParser(
+        prog="trundle", description="OpenAI-compatible embedding server for small CPUs."
+    )
     parser.add_argument("--version", action="version", version=f"trundle {__version__}")
     subparsers = parser.add_subparsers(dest="command")
 
     def common(target: argparse.ArgumentParser) -> None:
         target.add_argument("--model", help=f"model name (default: {DEFAULT_MODEL})")
-        target.add_argument("--model-dir", help="where models are stored (default: /models)")
-        target.add_argument("--log-level", choices=("debug", "info", "warning", "error"))
+        target.add_argument(
+            "--model-dir", help="where models are stored (default: /models)"
+        )
+        target.add_argument(
+            "--log-level", choices=("debug", "info", "warning", "error")
+        )
 
     serve = subparsers.add_parser("serve", help="load a model and serve the API")
     common(serve)
     serve.add_argument("--host", help="bind address (default: 127.0.0.1)")
     serve.add_argument("--port", type=int, help="bind port (default: 8000)")
-    serve.add_argument("--workers", type=int, help="concurrent embedding threads (default: 1)")
-    serve.add_argument("--threads", type=int, help="onnxruntime intra-op threads (default: 1)")
-    serve.add_argument("--max-batch", type=int, help="sequences per forward pass (default: 1)")
-    serve.add_argument("--max-inputs", type=int, help="inputs accepted per request (default: 256)")
-    serve.add_argument("--max-length", type=int, help="token limit per input (0 = model default)")
-    serve.add_argument("--prefix-mode", choices=("document", "query", "none"), help="prefix for unprefixed calls")
-    serve.add_argument("--no-download", action="store_true", help="never fetch a missing model")
+    serve.add_argument(
+        "--workers", type=int, help="concurrent embedding threads (default: 1)"
+    )
+    serve.add_argument(
+        "--threads", type=int, help="onnxruntime intra-op threads (default: 1)"
+    )
+    serve.add_argument(
+        "--max-batch", type=int, help="sequences per forward pass (default: 1)"
+    )
+    serve.add_argument(
+        "--max-inputs", type=int, help="inputs accepted per request (default: 256)"
+    )
+    serve.add_argument(
+        "--max-length", type=int, help="token limit per input (0 = model default)"
+    )
+    serve.add_argument(
+        "--prefix-mode",
+        choices=("document", "query", "none"),
+        help="prefix for unprefixed calls",
+    )
+    serve.add_argument(
+        "--no-download", action="store_true", help="never fetch a missing model"
+    )
     serve.set_defaults(func=cmd_serve)
 
-    pull_cmd = subparsers.add_parser("pull", help="download a model into the model directory")
+    pull_cmd = subparsers.add_parser(
+        "pull", help="download a model into the model directory"
+    )
     common(pull_cmd)
     pull_cmd.add_argument("--all", action="store_true", help="fetch every known model")
-    pull_cmd.add_argument("--force", action="store_true", help="re-download even if present")
+    pull_cmd.add_argument(
+        "--force", action="store_true", help="re-download even if present"
+    )
     pull_cmd.set_defaults(func=cmd_pull)
 
-    list_cmd = subparsers.add_parser("list", help="show known models and what is on disk")
-    list_cmd.add_argument("--model-dir", help="where models are stored (default: /models)")
+    list_cmd = subparsers.add_parser(
+        "list", help="show known models and what is on disk"
+    )
+    list_cmd.add_argument(
+        "--model-dir", help="where models are stored (default: /models)"
+    )
     list_cmd.set_defaults(func=cmd_list)
 
     info_cmd = subparsers.add_parser("info", help="environment report")
@@ -216,7 +279,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(format="%(asctime)s %(levelname)-7s %(name)s: %(message)s", level="INFO")
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s", level="INFO"
+    )
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):

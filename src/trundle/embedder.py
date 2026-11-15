@@ -13,9 +13,9 @@ this box; the batch cap and disabled arena below are what keep it at ~600 MB.
 from __future__ import annotations
 
 import threading
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import numpy as np
 
@@ -57,7 +57,9 @@ def truncate(matrix: np.ndarray, dim: int) -> np.ndarray:
     for others it degrades quality, so it is opt-in per request.
     """
     if dim <= 0 or dim > matrix.shape[1]:
-        raise EmbedderError(f"dimensions must be between 1 and {matrix.shape[1]}, got {dim}")
+        raise EmbedderError(
+            f"dimensions must be between 1 and {matrix.shape[1]}, got {dim}"
+        )
     if dim == matrix.shape[1]:
         return matrix
     return normalize(matrix[:, :dim])
@@ -95,15 +97,21 @@ class Embedder:
 
         tokenizer_path = self.root / "tokenizer.json"
         if not tokenizer_path.is_file():
-            raise EmbedderError(f"{tokenizer_path} is missing; run `trundle pull --model {self.spec.name}`")
+            raise EmbedderError(
+                f"{tokenizer_path} is missing; run `trundle pull --model {self.spec.name}`"
+            )
         self.tokenizer = Tokenizer.from_file(str(tokenizer_path))
-        self.tokenizer.enable_truncation(max_length=min(self.spec.max_length, self.max_length))
+        self.tokenizer.enable_truncation(
+            max_length=min(self.spec.max_length, self.max_length)
+        )
         pad_id = self.tokenizer.token_to_id("[PAD]")
         if pad_id is None:
             pad_id = self.tokenizer.token_to_id("<pad>")
         if pad_id is None:
             pad_id = 0
-        self.tokenizer.enable_padding(pad_id=pad_id, pad_token=self.tokenizer.id_to_token(pad_id) or "[PAD]")
+        self.tokenizer.enable_padding(
+            pad_id=pad_id, pad_token=self.tokenizer.id_to_token(pad_id) or "[PAD]"
+        )
 
         if self.spec.kind == "static":
             self._load_static()
@@ -124,7 +132,9 @@ class Embedder:
 
         model_file = self.root / (self.spec.onnx_file or "model.onnx")
         if not model_file.is_file():
-            raise EmbedderError(f"{model_file} is missing; run `trundle pull --model {self.spec.name}`")
+            raise EmbedderError(
+                f"{model_file} is missing; run `trundle pull --model {self.spec.name}`"
+            )
 
         options = ort.SessionOptions()
         options.intra_op_num_threads = self.threads
@@ -145,7 +155,10 @@ class Embedder:
 
     def count_tokens(self, texts: Sequence[str]) -> int:
         with self._tokenizer_lock:
-            return sum(len(encoding.ids) for encoding in self.tokenizer.encode_batch(list(texts)))
+            return sum(
+                len(encoding.ids)
+                for encoding in self.tokenizer.encode_batch(list(texts))
+            )
 
     def embed(
         self,
@@ -177,7 +190,9 @@ class Embedder:
         with self._tokenizer_lock:
             encodings = self.tokenizer.encode_batch(batch)
             ids = np.asarray([encoding.ids for encoding in encodings], dtype=np.int64)
-            mask = np.asarray([encoding.attention_mask for encoding in encodings], dtype=np.int64)
+            mask = np.asarray(
+                [encoding.attention_mask for encoding in encodings], dtype=np.int64
+            )
 
         feed: dict[str, np.ndarray] = {}
         if "input_ids" in self._input_names:
